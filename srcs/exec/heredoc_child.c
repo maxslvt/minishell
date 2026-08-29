@@ -1,0 +1,112 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   heredoc_child.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: masolet- <masolet-@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/08/28 14:13:57 by masolet-          #+#    #+#             */
+/*   Updated: 2026/08/28 14:13:57 by masolet-         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+/*
+ * Reads one line of heredoc input, using readline for interactive mode
+ * or get_next_line otherwise, and strips the trailing newline when present.
+ */
+static char	*hd_read_line(void)
+{
+	char	*line;
+	size_t	len;
+
+	if (isatty(STDIN_FILENO))
+		return (readline("> "));
+	line = get_next_line(STDIN_FILENO);
+	if (!line)
+		return (NULL);
+	len = ft_strlen(line);
+	if (len > 0 && line[len - 1] == '\n')
+		line[len - 1] = '\0';
+	return (line);
+}
+
+/*
+ * Writes one heredoc line into the pipe, expanding variables when required
+ * and appending a newline to preserve the content sent to the consumer.
+ */
+static int	write_pipe(int fd, char *line, t_hd *hd)
+{
+	char	*expanded;
+
+	if (hd->redir->expand_heredoc)
+	{
+		expanded = expand_heredoc_line(line, *hd->env, hd->status);
+		if (!expanded)
+			return (free(line), -1);
+		write(fd, expanded, ft_strlen(expanded));
+		write(fd, "\n", 1);
+		free(expanded);
+		free(line);
+		return (0);
+	}
+	write(fd, line, ft_strlen(line));
+	write(fd, "\n", 1);
+	free(line);
+	return (0);
+}
+
+/*
+ * Processes one heredoc line: stops on EOF or the delimiter, warns if needed,
+ * and writes valid content to the pipe; returns a control value for the loop.
+ */
+static int	hd_line(int p[2], char *line, t_hd *hd)
+{
+	if (!line)
+	{
+		if (g_sig == SIGINT)
+			return (-1);
+		ft_putstr_fd("minishell: warning: here-document delimited ", 2);
+		ft_putstr_fd("by end-of-file (wanted `", 2);
+		ft_putstr_fd(hd->redir->target, 2);
+		ft_putstr_fd("')\n", 2);
+		return (0);
+	}
+	if (ft_strcmp(line, hd->redir->target) == 0)
+		return (free(line), 0);
+	if (write_pipe(p[1], line, hd) == -1)
+		return (close(p[1]), -1);
+	return (1);
+}
+
+/*
+ * Runs the heredoc child process: reads the input loop, writes each line to
+ * the pipe until the delimiter is reached or the process is interrupted.
+ */
+void	heredoc_child(int p[2], t_hd *hd)
+{
+	char	*line;
+	int		ret;
+
+	close(p[0]);
+	setup_heredoc_signals();
+	while (1)
+	{
+		line = hd_read_line();
+		ret = hd_line(p, line, hd);
+		if (ret <= 0)
+		{
+			close(p[1]);
+			if (hd->line)
+				free(hd->line);
+			if (ret == -1)
+			{
+				if (g_sig == SIGINT)
+					cleanup_and_exit(hd->root, hd->env, 130);
+				cleanup_and_exit(hd->root, hd->env, 1);
+			}
+			cleanup_and_exit(hd->root, hd->env, 0);
+		}
+	}
+}

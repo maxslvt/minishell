@@ -1,18 +1,18 @@
-NAME        = minishell
+NAME = minishell
 
 # Directories
-SRCDIR      = src
-OBJDIR      = obj
-INCDIR      = includes
-LIBFT_DIR   = libft
+SRCDIR = srcs
+OBJDIR = objs
+INCDIR = includes
+LIBFT_DIR = libft
+LIBFT = $(LIBFT_DIR)/libft.a
 
-# Compiler and Flags
-CC          = cc
-CFLAGS      = -Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR) -g3
-LDFLAGS     = -L$(LIBFT_DIR)
-LIBS        = $(LIBFT_DIR)/libft.a -lreadline
+# Compiler and flags
+CC = cc
+CFLAGS = -Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR)
 
-# Colors
+UNAME_S = $(shell uname -s)
+
 RED     = \033[1;31m
 GREEN   = \033[1;32m
 YELLOW  = \033[1;33m
@@ -22,83 +22,99 @@ CYAN    = \033[1;36m
 WHITE   = \033[1;37m
 RESET   = \033[0m
 
-# Sources
-SRC_FILES = \
-	main.c \
-	builtins/builtins.c \
-	builtins/ft_cd.c \
-	builtins/ft_echo.c \
-	builtins/ft_env.c \
-	builtins/ft_exit.c \
-	builtins/ft_export.c \
-	builtins/ft_export_args.c \
-	builtins/ft_export_utils.c \
-	builtins/ft_pwd.c \
-	builtins/ft_unset.c \
-	env/create_env.c \
-	env/env.c \
-	exec/exec_pipes.c \
-	exec/heredoc.c \
-	exec/heredoc_utils.c \
-	exec/path.c \
-	exec/pipeline.c \
-	exec/pipeline_utils.c \
-	exec/process.c \
-	exec/redirect.c \
-	parsing/clean.c \
-	parsing/cmd_builder.c \
-	parsing/ft_expand.c \
-	parsing/lexer.c \
-	parsing/lexer_utils.c \
-	parsing/parser.c \
-	parsing/parser_utils.c \
-	parsing/quotes.c \
-	parsing/redir_init.c \
-	parsing/redir_parser.c \
-	parsing/syntax.c \
-	parsing/tokenize.c \
-	utils/error.c \
-	utils/free.c \
-	utils/ft_strcmp.c \
-	utils/signal.c
+ifeq ($(UNAME_S),Darwin)
+	READLINE_PREFIX = $(shell brew --prefix readline)
+	CFLAGS += -I$(READLINE_PREFIX)/include
+	LDFLAGS = -L$(READLINE_PREFIX)/lib -L$(LIBFT_DIR)
+	LDLIBS = -lft -lreadline
+else
+	LDFLAGS = -L$(LIBFT_DIR)
+	LDLIBS = -lft -lreadline
+endif
 
-SRC = $(addprefix $(SRCDIR)/, $(SRC_FILES))
-OBJ = $(SRC_FILES:%.c=$(OBJDIR)/%.o)
-DEP = $(OBJ:.o=.d)
+SRCS = \
+	srcs/main.c \
+	srcs/read_input.c \
+	srcs/run_line.c \
+	srcs/builtins/builtins.c \
+	srcs/builtins/ft_cd.c \
+	srcs/builtins/ft_echo.c \
+	srcs/builtins/ft_env.c \
+	srcs/builtins/ft_exit.c \
+	srcs/builtins/ft_export_print.c \
+	srcs/builtins/ft_export_utils.c \
+	srcs/builtins/ft_export.c \
+	srcs/builtins/ft_pwd.c \
+	srcs/builtins/ft_unset.c \
+	srcs/env/env_get.c \
+	srcs/env/env_init.c \
+	srcs/env/env_set.c \
+	srcs/exec/child_exec.c \
+	srcs/exec/child_exec_utils.c \
+	srcs/exec/child_pipe.c \
+	srcs/exec/child.c \
+	srcs/exec/exec.c \
+	srcs/exec/heredoc.c \
+	srcs/exec/heredoc_child.c \
+	srcs/exec/path.c \
+	srcs/exec/redir_apply.c \
+	srcs/exec/wait.c \
+	srcs/expand/expand_escape.c \
+	srcs/expand/expand_hd.c \
+	srcs/expand/expand_utils.c \
+	srcs/expand/expand.c \
+	srcs/expand/wildcard_apply.c \
+	srcs/expand/wildcard_dir.c \
+	srcs/expand/wildcard.c \
+	srcs/lexer/lexer_utils.c \
+	srcs/lexer/lexer.c \
+	srcs/lexer/token_utils.c \
+	srcs/lexer/token.c \
+	srcs/parser/parser_helpers.c \
+	srcs/parser/parser_list.c \
+	srcs/parser/parser_nodes.c \
+	srcs/parser/parser_redir.c \
+	srcs/parser/parser_sub.c \
+	srcs/parser/parser.c \
+	srcs/parser/syntax_utils.c \
+	srcs/parser/syntax.c \
+	srcs/utils/error.c \
+	srcs/utils/free.c \
+	srcs/utils/signals_heredoc.c \
+	srcs/utils/signals.c
+
+OBJS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
+DEPS = $(OBJS:.o=.d)
 
 all: $(NAME) finish
 
-$(NAME): $(LIBFT_DIR)/libft.a $(OBJ)
-	@printf "\r\033[K🟡 $(YELLOW)[MINISHELL] Compiling minishell...$(RESET)\n"
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) $(LIBS) -o $(NAME)
-	@printf "\r\033[K✅ $(GREEN)[MINISHELL] Compiled !$(RESET)\n"
-
-$(LIBFT_DIR)/libft.a:
-	@make -s -C $(LIBFT_DIR) --no-print-directory
+$(NAME): $(LIBFT) $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $(NAME)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
-	@printf "\r🟡 $(MAGENTA)[COMPILING📦] $<$(RESET) \033[K"
-	@$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+	@printf "🟡 $(MAGENTA)[COMPILING📦] $<$(RESET)\n"
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
--include $(DEP)
+$(LIBFT):
+	@$(MAKE) -s -C $(LIBFT_DIR) --no-print-directory
 
 clean:
 	@printf "🟡 $(MAGENTA)[CLEANING🧹] minishell object files...$(RESET)\n"
 	@rm -rf $(OBJDIR)
-	@make -s -C $(LIBFT_DIR) clean --no-print-directory
+	@$(MAKE) -s -C $(LIBFT_DIR) clean --no-print-directory
 	@printf "✅ $(GREEN)[CLEANED🧹]$(RESET)\n"
 
 fclean: clean
 	@printf "🟡 $(MAGENTA)[CLEANING🧹] libft and executable...$(RESET)\n"
 	@rm -f $(NAME)
-	@make -s -C $(LIBFT_DIR) fclean --no-print-directory
+	@$(MAKE) -s -C $(LIBFT_DIR) fclean --no-print-directory
 	@printf "✅ $(GREEN)[CLEANED🧹]$(RESET)\n"
 
 re: fclean all
 
 finish:
-	@printf '$(WHITE)'
+	@printf '$(GREEN)'
 	@printf '\n  __  __ _       _     _          _ _ \n'
 	@printf ' |  \/  (_)     (_)   | |        | | |\n'
 	@printf ' | \  / |_ _ __  _ ___| |__   ___| | |\n'
@@ -106,5 +122,8 @@ finish:
 	@printf ' | |  | | | | | | \__ \ | | |  __/ | |\n'
 	@printf ' |_|  |_|_|_| |_|_|___/_| |_|\___|_|_|\n'
 	@printf '$(RESET)\n'
+	@printf "\r\033[K✅ $(GREEN)[MINISHELL] Compiled !$(RESET)\n"
+
+-include $(DEPS)
 
 .PHONY: all clean fclean re finish

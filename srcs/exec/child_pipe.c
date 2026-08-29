@@ -1,0 +1,102 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   child_pipe.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: masolet- <masolet-@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/08/28 14:14:16 by masolet-          #+#    #+#             */
+/*   Updated: 2026/08/28 14:14:16 by masolet-         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+/*
+ * Runs the left branch of a pipe in the child process by redirecting
+ * standard output to the write end of the pipe and executing the left node.
+ */
+static void	run_left(t_node *root, t_node *cur, int pf[2], t_exec_info *info)
+{
+	close(pf[0]);
+	dup2(pf[1], STDOUT_FILENO);
+	close(pf[1]);
+	exec_node_in_child(root, cur->left, info);
+}
+
+/*
+ * Runs the right branch of a pipe in the child process by redirecting
+ * standard input to the read end of the pipe and executing the right node.
+ */
+static void	run_right(t_node *root, t_node *cur, int pf[2], t_exec_info *info)
+{
+	close(pf[1]);
+	dup2(pf[0], STDIN_FILENO);
+	close(pf[0]);
+	exec_node_in_child(root, cur->right, info);
+}
+
+/*
+ * Creates a child process for the left side of the pipeline.
+ * In the child, it configures the pipe output and executes the left subtree.
+ */
+static pid_t	fork_left(t_node *root, t_node *cur, int pf[2],
+		t_exec_info *info)
+{
+	pid_t	pid;
+
+	pid = fork();
+	if (pid == -1)
+	{
+		close(pf[0]);
+		close(pf[1]);
+		cleanup_and_exit(root, info->env, 1);
+	}
+	if (pid == 0)
+		run_left(root, cur, pf, info);
+	return (pid);
+}
+
+/*
+ * Creates a child process for the right side of the pipeline.
+ * In the child, it configures the pipe input and executes the right subtree.
+ */
+static pid_t	fork_right(t_node *root, t_node *cur, int pf[2],
+		t_exec_info *info)
+{
+	pid_t	pid;
+
+	pid = fork();
+	if (pid == -1)
+	{
+		close(pf[0]);
+		close(pf[1]);
+		cleanup_and_exit(root, info->env, 1);
+	}
+	if (pid == 0)
+		run_right(root, cur, pf, info);
+	return (pid);
+}
+
+/*
+ * Executes a command pipeline in child processes: creates the pipe,
+ * forks both sides, connects each side to the pipe ends, waits for both
+ * children, and exits with the final status of the right-hand command.
+ */
+void	exec_pipe_in_child(t_node *root, t_node *cur, t_exec_info *info)
+{
+	int		pf[2];
+	pid_t	lpid;
+	pid_t	rpid;
+	int		st_right;
+
+	if (pipe(pf) == -1)
+		cleanup_and_exit(root, info->env, 1);
+	lpid = fork_left(root, cur, pf, info);
+	rpid = fork_right(root, cur, pf, info);
+	close(pf[0]);
+	close(pf[1]);
+	waitpid(lpid, NULL, 0);
+	waitpid(rpid, &st_right, 0);
+	cleanup_and_exit(root, info->env, handle_child_status(st_right));
+}
