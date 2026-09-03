@@ -26,7 +26,11 @@ static void	exec_cmd_in_child(t_node *root, t_node *cur, t_exec_info *info)
 		cleanup_and_exit(root, info->env, 1);
 	close_heredoc_fds(root);
 	if (!cur->cmd || !cur->cmd[0])
+	{
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
 		cleanup_and_exit(root, info->env, 0);
+	}
 	if (is_builtin(cur->cmd[0]) || is_env_builtin(cur->cmd))
 	{
 		if (ft_strcmp(cur->cmd[0], "exit") == 0)
@@ -71,7 +75,7 @@ void	exec_node_in_child(t_node *root, t_node *cur, t_exec_info *info)
  * Forks a child process to execute the root AST node, waits for it,
  * restores shell signal handling, and returns the final status for the caller.
  */
-int	fork_and_run(t_node *root, t_var **env, int last_status)
+int	fork_and_run(t_node *root, t_node *cur, t_var **env, int last_status)
 {
 	pid_t		pid;
 	int			wstatus;
@@ -90,7 +94,7 @@ int	fork_and_run(t_node *root, t_var **env, int last_status)
 	{
 		info.env = env;
 		info.last_status = last_status;
-		exec_node_in_child(root, root, &info);
+		exec_node_in_child(root, cur, &info);
 	}
 	waitpid(pid, &wstatus, 0);
 	setup_signal_handlers();

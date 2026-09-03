@@ -13,6 +13,8 @@
 #ifndef MINISHELL_H
 # define MINISHELL_H
 
+# define _POSIX_C_SOURCE 200809L
+
 # include <unistd.h>
 # include <stdlib.h>
 # include <stdio.h>
@@ -29,8 +31,6 @@
 # include <readline/history.h>
 # include <dirent.h>
 # include "libft.h"
-
-void			rl_replace_line(const char *text, int clear_undo);
 
 extern volatile sig_atomic_t	g_sig;
 
@@ -131,7 +131,6 @@ void			setup_heredoc_signals(void);
 void			setup_child_signals(void);
 
 t_var			*create_env(char **envp);
-t_var			*new_var(char *envp_line);
 t_var			*find_var(t_var *env, const char *name);
 char			*get_env_value(char *name, t_var *env);
 char			**convert_env_list(t_var *env);
@@ -190,7 +189,8 @@ int				run_line(char *line, t_var **env, int status, int *abort);
 int				handle_child_status(int wstatus);
 void			expand_cmd_args(t_node *cmd_node, t_var *env, int status);
 int				apply_redirections(t_node *node, t_var *env, int status);
-int				fork_and_run(t_node *root, t_var **env, int last_status);
+int				fork_and_run(t_node *root, t_node *cur, t_var **env,
+					int last_status);
 void			exec_node_in_child(t_node *root, t_node *cur,
 					t_exec_info *info);
 void			exec_external_cmd(t_node *root, t_node *cur, t_var **env);

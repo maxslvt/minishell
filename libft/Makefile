@@ -6,14 +6,59 @@ CFLAGS = -Wall -Wextra -Werror
 
 AR = ar
 
-RM = rm -f
+RM = rm -rf
 
-SRC = ft_strdup.c ft_atoi.c ft_bzero.c ft_isalnum.c ft_isalpha.c ft_isascii.c ft_isdigit.c ft_isprint.c ft_memchr.c ft_memcmp.c ft_memcpy.c ft_memmove.c ft_memset.c \
-	ft_strchr.c ft_strlcat.c ft_strlcpy.c ft_strlen.c ft_strncmp.c ft_strnstr.c ft_split.c ft_strrchr.c ft_tolower.c ft_toupper.c ft_calloc.c ft_itoa.c ft_strjoin.c \
-	ft_strmapi.c ft_substr.c ft_putchar_fd.c ft_putendl_fd.c ft_putnbr_fd.c ft_putstr_fd.c ft_striteri.c ft_strtrim.c ft_printf.c ft_conversions.c ft_utils.c ft_lstnew.c \
-	ft_lstadd_front.c ft_lstsize.c ft_lstlast.c ft_lstadd_back.c ft_lstdelone.c ft_lstclear.c ft_lstiter.c ft_lstmap.c get_next_line.c ft_strndup.c
+OBJDIR = obj
 
-OBJ = ${SRC:.c=.o}
+SRC = src/char/ft_isalnum.c \
+	src/char/ft_isalpha.c \
+	src/char/ft_isascii.c \
+	src/char/ft_isdigit.c \
+	src/char/ft_isprint.c \
+	src/char/ft_split.c \
+	src/char/ft_tolower.c \
+	src/char/ft_toupper.c \
+	src/conv/ft_atoi.c \
+	src/conv/ft_itoa.c \
+	src/fd/ft_putchar_fd.c \
+	src/fd/ft_putendl_fd.c \
+	src/fd/ft_putnbr_fd.c \
+	src/fd/ft_putstr_fd.c \
+	src/gnl/get_next_line.c \
+	src/lst/ft_lstadd_back.c \
+	src/lst/ft_lstadd_front.c \
+	src/lst/ft_lstclear.c \
+	src/lst/ft_lstdelone.c \
+	src/lst/ft_lstiter.c \
+	src/lst/ft_lstlast.c \
+	src/lst/ft_lstmap.c \
+	src/lst/ft_lstnew.c \
+	src/lst/ft_lstsize.c \
+	src/mem/ft_bzero.c \
+	src/mem/ft_calloc.c \
+	src/mem/ft_memchr.c \
+	src/mem/ft_memcmp.c \
+	src/mem/ft_memcpy.c \
+	src/mem/ft_memmove.c \
+	src/mem/ft_memset.c \
+	src/printf/ft_printf.c \
+	src/printf/ft_printf_utils.c \
+	src/str/ft_strchr.c \
+	src/str/ft_strdup.c \
+	src/str/ft_striteri.c \
+	src/str/ft_strjoin.c \
+	src/str/ft_strlcat.c \
+	src/str/ft_strlcpy.c \
+	src/str/ft_strlen.c \
+	src/str/ft_strmapi.c \
+	src/str/ft_strncmp.c \
+	src/str/ft_strndup.c \
+	src/str/ft_strnstr.c \
+	src/str/ft_strrchr.c \
+	src/str/ft_strtrim.c \
+	src/str/ft_substr.c
+
+OBJ = $(patsubst src/%.c,$(OBJDIR)/%.o,$(SRC))
 
 RED=\033[1;31m
 GREEN=\033[1;32m
@@ -22,27 +67,32 @@ BLUE=\033[1;34m
 MAGENTA=\033[1;35m
 CYAN=\033[1;36m
 WHITE=\033[1;37m
-
-.c.o:
-	@printf "\r🟡 ${MAGENTA}[COMPILING📦] $<${WHITE}"
-	@${CC} ${CFLAGS} -c $< -o ${<:.c=.o}
-
-${NAME}: ${OBJ}
-	@printf "\r\033[K🟡 ${YELLOW}[LIBFT] Compiling libft...${WHITE}\n"
-	@$(AR) rcs ${NAME} ${OBJ} >/dev/null 2>&1
-	@printf "\r\033[K✅ ${GREEN}[LIBFT] Compiled !${WHITE}\n"
+RESET   = \033[0m
 
 all: $(NAME)
 
+$(OBJDIR):
+	@mkdir -p $(OBJDIR)
+
+$(OBJDIR)/%.o: src/%.c | $(OBJDIR)
+	@mkdir -p $(dir $@)
+	@printf "\r${BLUE}[LIBFT] Compiling: $(CYAN)$<$(RESET)"
+	@$(CC) $(CFLAGS) -Iincludes -c $< -o $@
+
+${NAME}: ${OBJ}
+	@printf "\r\033[K${BLUE}[LIBFT] Compiling libft...${RESET}\n"
+	@$(AR) rcs ${NAME} ${OBJ} >/dev/null 2>&1
+	@printf "\r\033[K✅ ${GREEN}[LIBFT] Compiled !${RESET}\n"
+
 clean:
-	@printf "🟡 ${MAGENTA}[CLEANING🧹] libft .o files...${WHITE}\n"
-	@$(RM) $(OBJ)
-	@printf "✅ ${GREEN}[CLEANED🧹]${WHITE}\n"
+	@printf "${MAGENTA}[LIBFT] Cleaning .o files...${RESET}\n"
+	@$(RM) $(OBJDIR)
+	@printf "${GREEN}[LIBFT] .o files cleaned!${RESET}\n"
 
 fclean: clean
-	@printf "🟡 ${MAGENTA}[CLEANING🧹] libft archive...${WHITE}\n"
+	@printf "${MAGENTA}[LIBFT] Cleaning archive...${RESET}\n"
 	@$(RM) $(NAME)
-	@printf "✅ ${GREEN}[CLEANED🧹]${WHITE}\n"
+	@printf "${GREEN}[LIBFT] Archive cleaned!${RESET}\n"
 
 re: fclean all
 

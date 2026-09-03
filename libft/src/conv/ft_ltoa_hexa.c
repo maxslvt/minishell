@@ -1,18 +1,18 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_conversions.c                                   :+:      :+:    :+:   */
+/*   ft_ltoa_hexa.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: masolet- <masolet-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/11/19 14:50:12 by masolet-          #+#    #+#             */
-/*   Updated: 2025/11/24 16:33:07 by masolet-         ###   ########.fr       */
+/*   Created: 2026/09/01 01:42:53 by masolet-          #+#    #+#             */
+/*   Updated: 2026/09/01 01:44:16 by masolet-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-int	ft_ltoa_hexa_size(unsigned long long nb)
+static int	ft_ltoa_hexa_size(unsigned long long nb)
 {
 	int	nlen;
 
@@ -44,47 +44,6 @@ char	*ft_ltoa_hexa(unsigned long long n, char format)
 		if (format == 'X' && (res[nlen] >= 'a' && res[nlen] <= 'f'))
 			res[nlen] -= 32;
 		n /= 16;
-	}
-	return (res);
-}
-
-int	ft_utoa_size(long nb)
-{
-	int	nlen;
-
-	nlen = 0;
-	if (nb < 0)
-	{
-		nlen = 1;
-		nb = -nb;
-	}
-	while (nb > 0)
-	{
-		nb /= 10;
-		nlen++;
-	}
-	return (nlen);
-}
-
-char	*ft_utoa(unsigned int n)
-{
-	unsigned int	nlen;
-	unsigned int	num;
-	char			*res;
-
-	if (n == 0)
-		return (ft_strdup("0"));
-	num = n;
-	nlen = ft_utoa_size(num);
-	res = malloc((nlen + 1) * sizeof(char));
-	if (!res)
-		return (NULL);
-	res[nlen] = '\0';
-	while (num > 0)
-	{
-		nlen--;
-		res[nlen] = '0' + (num % 10);
-		num /= 10;
 	}
 	return (res);
 }

@@ -9,28 +9,10 @@ LIBFT = $(LIBFT_DIR)/libft.a
 
 # Compiler and flags
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR)
+CFLAGS = -Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR)/includes
 
-UNAME_S = $(shell uname -s)
-
-RED     = \033[1;31m
-GREEN   = \033[1;32m
-YELLOW  = \033[1;33m
-BLUE    = \033[1;34m
-MAGENTA = \033[1;35m
-CYAN    = \033[1;36m
-WHITE   = \033[1;37m
-RESET   = \033[0m
-
-ifeq ($(UNAME_S),Darwin)
-	READLINE_PREFIX = $(shell brew --prefix readline)
-	CFLAGS += -I$(READLINE_PREFIX)/include
-	LDFLAGS = -L$(READLINE_PREFIX)/lib -L$(LIBFT_DIR)
-	LDLIBS = -lft -lreadline
-else
-	LDFLAGS = -L$(LIBFT_DIR)
-	LDLIBS = -lft -lreadline
-endif
+LDFLAGS = -L$(LIBFT_DIR)
+LDLIBS = -lft -lreadline
 
 SRCS = \
 	srcs/main.c \
@@ -58,6 +40,7 @@ SRCS = \
 	srcs/exec/heredoc_child.c \
 	srcs/exec/path.c \
 	srcs/exec/redir_apply.c \
+	srcs/exec/expand_cmd_args.c \
 	srcs/exec/wait.c \
 	srcs/expand/expand_escape.c \
 	srcs/expand/expand_hd.c \
@@ -83,8 +66,16 @@ SRCS = \
 	srcs/utils/signals_heredoc.c \
 	srcs/utils/signals.c
 
+RED     = \033[1;31m
+GREEN   = \033[1;32m
+YELLOW  = \033[1;33m
+BLUE    = \033[1;34m
+MAGENTA = \033[1;35m
+CYAN    = \033[1;36m
+WHITE   = \033[1;37m
+RESET   = \033[0m
+
 OBJS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
-DEPS = $(OBJS:.o=.d)
 
 all: $(NAME) finish
 
@@ -93,23 +84,23 @@ $(NAME): $(LIBFT) $(OBJS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
-	@printf "🟡 $(MAGENTA)[COMPILING📦] $<$(RESET)\n"
-	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+	@printf "$(BLUE)[MINISHELL] Compiling: $(CYAN)$<$(RESET)\n"
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(LIBFT):
 	@$(MAKE) -s -C $(LIBFT_DIR) --no-print-directory
 
 clean:
-	@printf "🟡 $(MAGENTA)[CLEANING🧹] minishell object files...$(RESET)\n"
+	@printf "$(MAGENTA)[MINISHELL] Cleaning object files...$(RESET)\n"
 	@rm -rf $(OBJDIR)
 	@$(MAKE) -s -C $(LIBFT_DIR) clean --no-print-directory
-	@printf "✅ $(GREEN)[CLEANED🧹]$(RESET)\n"
+	@printf "$(GREEN)[MINISHELL] Cleaned !$(RESET)\n"
 
 fclean: clean
-	@printf "🟡 $(MAGENTA)[CLEANING🧹] libft and executable...$(RESET)\n"
+	@printf "$(MAGENTA)[MINISHELL] Cleaning libft and executable...$(RESET)\n"
 	@rm -f $(NAME)
 	@$(MAKE) -s -C $(LIBFT_DIR) fclean --no-print-directory
-	@printf "✅ $(GREEN)[CLEANED🧹]$(RESET)\n"
+	@printf "$(GREEN)[MINISHELL] Cleaned !$(RESET)\n"
 
 re: fclean all
 
@@ -123,7 +114,5 @@ finish:
 	@printf ' |_|  |_|_|_| |_|_|___/_| |_|\___|_|_|\n'
 	@printf '$(RESET)\n'
 	@printf "\r\033[K✅ $(GREEN)[MINISHELL] Compiled !$(RESET)\n"
-
--include $(DEPS)
 
 .PHONY: all clean fclean re finish

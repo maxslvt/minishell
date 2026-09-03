@@ -13,53 +13,36 @@
 #include "minishell.h"
 
 /*
- * Expands each argument of a command node using shell expansion rules,
- * handling empty results, wildcard expansion, and storing the final arguments.
- */
-void	expand_cmd_args(t_node *cmd_node, t_var *env, int status)
+** "exit" is special-cased: instead of calling ft_exit() here (which
+** would exit() immediately and skip the fd cleanup in
+** run_builtin_in_parent below), it signals the caller with -2 so
+** fds get restored/closed first, and ft_exit() is called only after.
+*/
+static int	execute_parent_builtin(t_node *cur, t_var **env, int last_status)
 {
-	char	**old_cmd;
-	char	*expanded;
-	int		i;
-
-	if (!cmd_node || !cmd_node->cmd)
-		return ;
-	old_cmd = cmd_node->cmd;
-	cmd_node->cmd = NULL;
-	i = 0;
-	while (old_cmd[i])
-	{
-		expanded = ft_expand(old_cmd[i], env, status);
-		if (expanded && expanded[0] == '\0' && !has_quotes(old_cmd[i]))
-			free(expanded);
-		else if (expanded && has_unquoted_star(old_cmd[i]))
-			add_wildcard_args(cmd_node, expanded);
-		else if (expanded)
-			add_arg(cmd_node, expanded);
-		i++;
-	}
-	ft_free_tab(old_cmd);
-}
-
-/*
- * Executes a parent-side builtin command after expansion and redirection.
- * It returns the builtin result while preserving the shell state.
- */
-static int	execute_parent_builtin(t_node *node, t_var **env, int last_status)
-{
-	expand_cmd_args(node, *env, last_status);
-	if (apply_redirections(node, *env, last_status) != 0)
+	expand_cmd_args(cur, *env, last_status);
+	if (apply_redirections(cur, *env, last_status) != 0)
 		return (1);
-	if (!node->cmd || !node->cmd[0])
+	if (!cur->cmd || !cur->cmd[0])
 		return (0);
-	return (dispatch_builtin(node, env, last_status));
+	if (ft_strcmp(cur->cmd[0], "exit") == 0)
+		return (-2);
+	return (dispatch_builtin(cur, env, last_status));
 }
 
 /*
- * Runs a builtin in the parent shell while temporarily saving stdin/stdout,
- * so redirections are contained to the builtin call and then restored.
- */
-static int	run_builtin_in_parent(t_node *node, t_var **env, int last_status)
+** root is passed through separately from cur so that if this
+** builtin is "exit", ft_exit()/cleanup_and_exit() frees the WHOLE
+** tree (root), not just the subnode currently being executed --
+** otherwise, when exit occurs inside a && / || chain, only that
+** leaf node gets freed and the rest of the tree leaks.
+** ft_exit()'s return value is captured into ret (not discarded):
+** if the argument was invalid, ft_exit() returns an error code
+** instead of exiting, and that code must become this command's
+** actual exit status ($?), not the internal -2 sentinel.
+*/
+static int	run_builtin_in_parent(t_node *root, t_node *cur, t_var **env,
+		int last_status)
 {
 	int	saved_in;
 	int	saved_out;
@@ -75,42 +58,47 @@ static int	run_builtin_in_parent(t_node *node, t_var **env, int last_status)
 			close(saved_out);
 		return (1);
 	}
-	ret = execute_parent_builtin(node, env, last_status);
+	ret = execute_parent_builtin(cur, env, last_status);
 	dup2(saved_in, STDIN_FILENO);
 	dup2(saved_out, STDOUT_FILENO);
 	close(saved_in);
 	close(saved_out);
+	if (ret == -2)
+		ret = ft_exit(root, cur, env, last_status);
 	return (ret);
 }
 
-/*
- * Checks whether the current root node is a command that should be executed
- * as a builtin directly in the parent process.
- */
-static int	is_parent_builtin_root(t_node *root)
+static int	is_parent_builtin_root(t_node *cur)
 {
-	return (root->type == N_CMD
-		&& root->cmd && root->cmd[0]
-		&& (is_builtin(root->cmd[0]) || is_env_builtin(root->cmd)));
+	return (cur->type == N_CMD && cur->cmd && cur->cmd[0]
+		&& (is_builtin(cur->cmd[0]) || is_env_builtin(cur->cmd)));
 }
 
 /*
- * Recursively executes the AST: logical AND/OR chains are evaluated left-to-right,
- * parent builtins run directly in the shell, and everything else is executed in a forked child.
- */
-int	run_tree(t_node *root, t_var **env, int last_status)
+** root stays fixed at the top of the tree through every recursive
+** call; cur is the node actually being evaluated right now. This
+** split matters because fork_and_run/run_builtin_in_parent/
+** cleanup_and_exit all need the REAL root to free the whole tree,
+** even when we're several && / || levels deep into it.
+*/
+static int	run_node(t_node *root, t_node *cur, t_var **env, int last_status)
 {
 	int	status;
 
-	if (root->type == N_AND || root->type == N_OR)
+	if (cur->type == N_AND || cur->type == N_OR)
 	{
-		status = run_tree(root->left, env, last_status);
-		if ((root->type == N_AND && status == 0)
-			|| (root->type == N_OR && status != 0))
-			status = run_tree(root->right, env, status);
+		status = run_node(root, cur->left, env, last_status);
+		if ((cur->type == N_AND && status == 0)
+			|| (cur->type == N_OR && status != 0))
+			status = run_node(root, cur->right, env, status);
 		return (status);
 	}
-	if (is_parent_builtin_root(root))
-		return (run_builtin_in_parent(root, env, last_status));
-	return (fork_and_run(root, env, last_status));
+	if (is_parent_builtin_root(cur))
+		return (run_builtin_in_parent(root, cur, env, last_status));
+	return (fork_and_run(root, cur, env, last_status));
+}
+
+int	run_tree(t_node *root, t_var **env, int last_status)
+{
+	return (run_node(root, root, env, last_status));
 }

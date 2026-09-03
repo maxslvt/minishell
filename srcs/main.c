@@ -9,6 +9,7 @@
 /*   Updated: 2026/08/28 14:12:21 by masolet-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 #include "minishell.h"
 
 /*
@@ -73,7 +74,6 @@ static void	main_loop(t_var **env, int *status)
 			add_history(line);
 		abort = 0;
 		*status = run_line(line, env, *status, &abort);
-		free(line);
 		if (abort && !isatty(STDIN_FILENO))
 			break ;
 	}
@@ -100,5 +100,8 @@ int	main(int argc, char **argv, char **envp)
 	ft_free_env(env);
 	if (isatty(STDIN_FILENO))
 		ft_putendl_fd("exit", STDOUT_FILENO);
+	close(STDIN_FILENO);
+	close(STDOUT_FILENO);
+	close(STDERR_FILENO);
 	return (status);
 }

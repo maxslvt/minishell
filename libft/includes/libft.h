@@ -6,7 +6,7 @@
 /*   By: masolet- <masolet-@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/17 10:50:39 by masolet-          #+#    #+#             */
-/*   Updated: 2026/03/24 15:59:37 by masolet-         ###   ########.fr       */
+/*   Updated: 2026/09/03 14:30:43 by masolet-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,12 +84,13 @@ int					ft_putstr_fd2(char *s, int fd);
 int					ft_putchar_fd2(char c, int fd);
 void				ft_putlen(const char *c, int i, int *len);
 void				ft_put_and_free(char *argc, int *len);
-int					ft_ltoa_hexa_size(unsigned long long nb);
 char				*ft_ltoa_hexa(unsigned long long n, char format);
-int					ft_utoa_size(long nb);
 char				*ft_utoa(unsigned int n);
 int					ft_printf(const char *txt, ...);
 
 char				*get_next_line(int fd);
+
+char				*append_char(char *res, char c);
+int					ft_strcmp(const char *a, const char *b);
 
 #endif
